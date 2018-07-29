@@ -1,0 +1,34 @@
+{
+  "name": "entrance-task-3-2",
+  "version": "1.0.0",
+  "description": "В этом репозитории находятся материалы тестового задания по JavaScript для [14-й Школы разработки интерфейсов](https://academy.yandex.ru/events/frontend/shri_msk-2018-2) (осень 2018, Москва, Санкт-Петербург, Симферополь).",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/a-rusak/yandex-shri-2018-3-2.git"
+  },
+  "author": "AR",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/a-rusak/yandex-shri-2018-3-2/issues"
+  },
+  "homepage": "https://github.com/a-rusak/yandex-shri-2018-3-2#readme",
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-core": "^6.26.3",
+    "babel-plugin-transform-es2015-modules-commonjs": "^6.26.2",
+    "eslint": "^5.2.0",
+    "eslint-config-airbnb": "^17.0.0",
+    "gulp": "^3.9.1",
+    "gulp-mocha": "^6.0.0",
+    "mocha": "^5.2.0"
+  },
+  "babel": {
+    "plugins": [
+      "transform-es2015-modules-commonjs"
+    ]
+  }
+}
