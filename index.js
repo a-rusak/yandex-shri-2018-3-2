@@ -1,6 +1,6 @@
 // import inputData from './data/input'
 const l = console.log;
-
+let schedule = {};
 const { devices, rates } = {
   devices: [
     {
@@ -91,8 +91,51 @@ rates.forEach(rate => {
   } else {
     for (let i = from; i < to; i++) {
       tarifByHours[i] = rate.value;
-      //console.log(i, tarifByHours[i])
+      // console.log(i, tarifByHours[i])
     }
   }
 });
-tarifByHours.forEach((a, i) => l(i, a));
+
+const propertyActions = [
+  {
+    name: 'day',
+    check: arg => arg > 6 && arg < 21
+  },
+  {
+    name: 'night',
+    check: arg => (arg < 7 && arg >= 0) || arg > 20
+  }
+];
+const getPropertyAction = arg =>
+  propertyActions.find(({ check }) => check(arg));
+
+// tarifByHoursObject = Object.assign({}, tarifByHours);
+tarifObject = tarifByHours.reduce((acc, tarif, hour) => {
+  return {
+    ...acc,
+    [hour]: {
+      tarif,
+      type: getPropertyAction(hour).name
+    }
+  };
+}, {});
+// l(tarifObject)
+
+function getDevice(tarif, hour) {
+  const { name } = getPropertyAction(hour);
+  return name;
+}
+
+schedule = devices.reduce((acc, device, i) => {
+  // l(acc, i);
+  if (device.duration === HOURS_PER_DAY) {
+    /* [...Array(HOURS_PER_DAY)].map((_, i) => {
+      l(acc);
+      // acc[i] = [...acc[i], device];
+    }); */
+    Object.keys(acc).map(hour => {acc[hour].push(device.id)})
+  }
+  return acc;
+
+}, Object.assign({}, [...Array(HOURS_PER_DAY)].map((_, i) => [])));
+l(schedule)
