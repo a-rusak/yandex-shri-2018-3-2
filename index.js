@@ -1,6 +1,4 @@
 // import inputData from './data/input'
-const l = console.log;
-let schedule = {};
 const { devices, rates } = {
   devices: [
     {
@@ -66,6 +64,12 @@ const { devices, rates } = {
   maxPower: 2100
 };
 
+const l = console.log;
+
+const TWENTY_FOUR_HOURS = 24;
+const schedule = Object.assign({}, [...Array(TWENTY_FOUR_HOURS)].map((_, i) => []));
+
+
 const dayDevices = devices.filter(device => device.mode === 'day');
 // dayDevices
 const nightDevices = devices.filter(device => device.mode === 'night');
@@ -73,16 +77,13 @@ const nightDevices = devices.filter(device => device.mode === 'night');
 const dayAndNightDevices = devices.filter(device => device.mode === undefined);
 // dayAndNightDevices
 
-const arr = [...Array(24)].map((_, i) => i);
-// const ratesByHour = arr.map(hour => {})
-const HOURS_PER_DAY = 24;
 
-const tarifByHours = Array(HOURS_PER_DAY);
+const tarifByHours = Array(TWENTY_FOUR_HOURS);
 
 rates.forEach(rate => {
   let { from, to } = rate;
   if (from > to) {
-    for (let i = from; i < HOURS_PER_DAY; i++) {
+    for (let i = from; i < TWENTY_FOUR_HOURS; i++) {
       tarifByHours[i] = rate.value;
     }
     for (let i = 0; i < to; i++) {
@@ -125,17 +126,31 @@ function getDevice(tarif, hour) {
   const { name } = getPropertyAction(hour);
   return name;
 }
+devices
+  .filter(device => device.duration === TWENTY_FOUR_HOURS)
+  .forEach(device => {
+    Object.keys(schedule).forEach(hour => {
+      schedule[hour].push(device.name);
+    });
+  });
 
-schedule = devices.reduce((acc, device, i) => {
-  // l(acc, i);
-  if (device.duration === HOURS_PER_DAY) {
-    /* [...Array(HOURS_PER_DAY)].map((_, i) => {
-      l(acc);
-      // acc[i] = [...acc[i], device];
-    }); */
-    Object.keys(acc).map(hour => {acc[hour].push(device.id)})
-  }
-  return acc;
-
-}, Object.assign({}, [...Array(HOURS_PER_DAY)].map((_, i) => [])));
-l(schedule)
+devices
+  .filter(device => device.duration < TWENTY_FOUR_HOURS)
+  .forEach(device => {
+  const { id, name, power, duration, mode } = device;
+  let startHour = mode === 'day' ? 10 : 23;
+  let currentPower = 0;
+  const hours = [...Array(duration)].map(
+    (_, i) => (startHour + i > 23 ? i - 1 : startHour + i)
+  );
+  hours.forEach(hour => {
+    schedule[hour].push(name)
+    currentPower = schedule[hour].reduce((sum, n) => {
+      const {power} = devices.find(d => d.name === n);
+      return sum + power;
+    }, 0);
+    l(schedule[hour], currentPower);
+  });
+  //l(device.name, hours)
+});
+l(schedule);
