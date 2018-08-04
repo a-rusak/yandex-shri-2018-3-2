@@ -85,53 +85,42 @@ const { devices, rates, maxPower } = {
 
 const l = console.log;
 
-const TWENTY_FOUR_HOURS = 24;
-const schedule = Object.assign({}, [...Array(TWENTY_FOUR_HOURS)].map(_ => []));
-const powers = [...Array(TWENTY_FOUR_HOURS)].map(_ => 0);
-const dayStartHour = 10; // TODO: calculate from tarif
-const nightStartHour = 23; // TODO: calculate from tarif
+const schedule = Object.assign({}, [...Array(24)].map(_ => []));
+const powers = new Array(24).fill(0);
+const tarifs = new Array(24).fill(0);
+const dayStart = 7; // from readme
+const nightStart = 21; // from readme
 
-// const dayDevices = devices.filter(device => device.mode === 'day');
-// dayDevices
-// const nightDevices = devices.filter(device => device.mode === 'night');
-// nightDevices
-// const dayAndNightDevices = devices.filter(device => device.mode === undefined);
-// dayAndNightDevices
+const createPeriod = (start, duration) =>
+  [...Array(duration)].map((_, i) => (start + i) % 24);
 
-// const tarifByHours = Array(TWENTY_FOUR_HOURS);
-
-/* rates.forEach(rate => {
-  let { from, to } = rate;
-  if (from > to) {
-    for (let i = from; i < TWENTY_FOUR_HOURS; i++) {
-      tarifByHours[i] = rate.value;
-    }
-    for (let i = 0; i < to; i++) {
-      tarifByHours[i] = rate.value;
-    }
-  } else {
-    for (let i = from; i < to; i++) {
-      tarifByHours[i] = rate.value;
-      // console.log(i, tarifByHours[i])
-    }
+rates.forEach(({ from, to, value }) => {
+  const duration = from < to ? to - from : 24 - from + to;
+  const period = createPeriod(from, duration);
+  for (let hour of period) {
+    tarifs[hour] = value;
   }
-}); */
+});
+if (tarifs.some(tarif => tarif === 0)) {
+  throw new RangeError(`Некорректно определена сетка тарифов`);
+}
+// l(tarifs)
 
-/* const propertyActions = [
+const propertyActions = [
   {
     name: 'day',
-    check: arg => arg > 6 && arg < 21
+    check: arg => arg >= dayStart && arg < nightStart
   },
   {
     name: 'night',
-    check: arg => (arg < 7 && arg >= 0) || arg > 20
+    check: arg => (arg < dayStart && arg >= 0) || arg >= nightStart
   }
-]; */
-/* const getPropertyAction = arg =>
-  propertyActions.find(({ check }) => check(arg)); */
+];
 
-// tarifByHoursObject = Object.assign({}, tarifByHours);
-/* tarifObject = tarifByHours.reduce((acc, tarif, hour) => {
+const getPropertyAction = arg =>
+  propertyActions.find(({ check }) => check(arg));
+
+tarifObject = tarifs.reduce((acc, tarif, hour) => {
   return {
     ...acc,
     [hour]: {
@@ -139,20 +128,37 @@ const nightStartHour = 23; // TODO: calculate from tarif
       type: getPropertyAction(hour).name
     }
   };
-}, {}); */
-// l(tarifObject)
+}, {});
+l(tarifObject);
 
-/* function getDevice(tarif, hour) {
+/* const getDevice = (tarif, hour) => {
   const { name } = getPropertyAction(hour);
   return name;
 } */
 
-const createPeriod = (start, duration) =>
-  [...Array(duration)].map((_, i) => ((start + i) % 24));
+const getFirstCheapHour = (acc, item, index) => {
+  const [i, { tarif }] = item;
+  const compare = () => (acc[1].tarif <= tarif ? acc : item);
+  acc = index === 0 ? item : compare();
+  return acc;
+};
+
+const dayFirstCheapHour = +Object.entries(tarifObject)
+  .filter(([, { type }]) => type === 'day')
+  .reduce(getFirstCheapHour, {})[0];
+
+let nightFirstCheapHour = +Object.entries(tarifObject)
+  .filter(([, { type }]) => type === 'night')
+  .map(item => {
+    const index = item[0].length === 1 ? 30 + +item[0] : +item[0];
+    return [item[0], item[1], index];
+  })
+  .sort((a, b) => a[2] - b[2])
+  .reduce(getFirstCheapHour, {})[0];
 
 const findStartHour = ({ name, mode, power, duration }) => {
   let attempt = 1;
-  let start = mode === 'day' ? dayStartHour : nightStartHour;
+  let start = mode === 'day' ? dayFirstCheapHour : nightFirstCheapHour;
   return testPeriod(createPeriod(start, duration));
 
   function testPeriod(period) {
@@ -164,9 +170,6 @@ const findStartHour = ({ name, mode, power, duration }) => {
           // l(attempt, start, name, powers[hour]);
           testPeriod(createPeriod(start, duration));
         } else {
-          console.error(
-            `Умный дом не сможет включить прибор ${name} из-за перегрузки по мощности`
-          );
           start = null;
         }
         break;
@@ -178,28 +181,28 @@ const findStartHour = ({ name, mode, power, duration }) => {
   }
 };
 
-devices
-  .filter(({ duration }) => duration === 24)
-  .forEach(({ name, power }) => {
-    Object.keys(schedule).forEach(hour => {
+devices.filter(({ duration }) => duration === 24).forEach(({ name, power }) => {
+  Object.keys(schedule).forEach(hour => {
+    schedule[hour].push(name);
+    powers[hour] += power;
+  });
+});
+
+devices.filter(device => device.duration < 24).forEach(device => {
+  const { name, duration } = device;
+
+  const start = findStartHour(device);
+  if (start) {
+    // l(name, power, start, duration);
+    const period = createPeriod(start, duration);
+    for (let hour of period) {
       schedule[hour].push(name);
-      powers[hour] += power;
-    });
-  });
-
-devices
-  .filter(device => device.duration < 24)
-  .forEach(device => {
-    const { name, duration } = device;
-
-    const start = findStartHour(device);
-    if (start) {
-      // l(name, power, start, duration);
-      const period = createPeriod(start, duration);
-      for (let hour of period) {
-        schedule[hour].push(name);
-      }
     }
-  });
-// l(schedule);
+  } else {
+    throw new RangeError(
+      `Умный дом не сможет включить ${name} из-за перегрузки по мощности`
+    );
+  }
+});
+l(schedule);
 // powers.map((p, i) => l(i, p, schedule[i]));
