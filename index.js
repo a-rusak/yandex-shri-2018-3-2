@@ -33,7 +33,7 @@ const { devices, rates, maxPower } = {
       power: 850,
       duration: 1
     },
-    {
+    /* {
       id: '7D9DC84AD110500D284B33C82FE6E85Z',
       name: '_Телевизор',
       power: 1200,
@@ -51,7 +51,7 @@ const { devices, rates, maxPower } = {
       power: 1700,
       duration: 3,
       mode: 'day'
-    }
+    } */
   ],
   rates: [
     {
@@ -88,6 +88,7 @@ const l = console.log;
 const schedule = Object.assign({}, [...Array(24)].map(_ => []));
 const powers = new Array(24).fill(0);
 const tarifs = new Array(24).fill(0);
+const devicesPeriod = {};
 const dayStart = 7; // from readme
 const nightStart = 21; // from readme
 
@@ -104,7 +105,7 @@ rates.forEach(({ from, to, value }) => {
 if (tarifs.some(tarif => tarif === 0)) {
   throw new RangeError(`Некорректно определена сетка тарифов`);
 }
-// l(tarifs)
+//l(tarifs)
 
 const propertyActions = [
   {
@@ -129,7 +130,7 @@ tarifObject = tarifs.reduce((acc, tarif, hour) => {
     }
   };
 }, {});
-l(tarifObject);
+// l(tarifObject);
 
 /* const getDevice = (tarif, hour) => {
   const { name } = getPropertyAction(hour);
@@ -181,22 +182,24 @@ const findStartHour = ({ name, mode, power, duration }) => {
   }
 };
 
-devices.filter(({ duration }) => duration === 24).forEach(({ name, power }) => {
+devices.filter(({ duration }) => duration === 24).forEach(({ id, power }) => {
   Object.keys(schedule).forEach(hour => {
-    schedule[hour].push(name);
+    schedule[hour].push(id);
+    devicesPeriod[id] = createPeriod(0, 24);
     powers[hour] += power;
   });
 });
 
 devices.filter(device => device.duration < 24).forEach(device => {
-  const { name, duration } = device;
+  const { id, duration } = device;
 
   const start = findStartHour(device);
   if (start) {
     // l(name, power, start, duration);
     const period = createPeriod(start, duration);
+    devicesPeriod[id] = period;
     for (let hour of period) {
-      schedule[hour].push(name);
+      schedule[hour].push(id);
     }
   } else {
     throw new RangeError(
@@ -204,5 +207,35 @@ devices.filter(device => device.duration < 24).forEach(device => {
     );
   }
 });
-l(schedule);
+// l(schedule);
+// l(powers)
 // powers.map((p, i) => l(i, p, schedule[i]));
+const consumedEnergyValue = powers.reduce((acc, power, hour) => {
+  acc += power/1000*tarifs[hour];
+  // l(hour, power/1000*tarifs[hour])
+  return acc;
+}, 0)
+// l(consumedEnergyValue)
+
+const consumedEnergyDevices = Object.keys(devicesPeriod).reduce((acc, deviceId) => {
+  /* return {
+    ...acc,
+    [schedule[hour]]: 'aa'
+  }; */
+  //acc += power/1000*tarifs[hour];
+  const consumedEnergyDevice = devicesPeriod[deviceId].reduce((acc, hour) => {
+    //tarifs[hour]
+    const {power} = devices.find(({id, power}) => id === deviceId);
+    acc += power/1000*tarifs[hour];
+    return acc;
+    //l(hour, power);
+  }, 0);
+  // l(deviceId, consumedEnergyDevice)
+  return {
+    ...acc,
+    [deviceId]: consumedEnergyDevice
+  };
+}, {});
+
+// l(devicesPeriod);
+// l(consumedEnergyDevices);
